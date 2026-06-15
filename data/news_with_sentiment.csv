@@ -1,0 +1,5 @@
+date,title,sentiment_score,source 
+2024-03-28,"Yandex reports strong Q1 earnings",0.85,Bloomberg 
+2024-03-15,"Yandex launches new AI search features",0.72,TechCrunch 
+2024-02-20,"Yandex expands cloud infrastructure",0.65,Reuters 
+2024-01-25,"Regulatory scrutiny increases for tech firms",-0.55,Reuters 
