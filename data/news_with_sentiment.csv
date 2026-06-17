@@ -1,5 +1,32 @@
 date,title,sentiment_score,source 
-2024-03-28,"Yandex reports strong Q1 earnings",0.85,Bloomberg 
-2024-03-15,"Yandex launches new AI search features",0.72,TechCrunch 
-2024-02-20,"Yandex expands cloud infrastructure",0.65,Reuters 
-2024-01-25,"Regulatory scrutiny increases for tech firms",-0.55,Reuters 
+2021-04-28,"Yandex Announces First Quarter 2021 Financial Results",0.70,Official Press Release 
+2021-07-28,"Yandex Announces Second Quarter 2021 Financial Results",0.75,Official Press Release 
+2021-08-30,"Yandex enters into Framework Agreement with Uber to restructure joint ventures",0.55,Official Press Release 
+2021-10-27,"Yandex Announces Third Quarter 2021 Financial Results",0.70,Official Press Release 
+2021-12-06,"Yandex announces lock-up of all Class B shares held by Arkady Volozh",0.50,Official Press Release 
+2021-12-21,"Yandex announces completion of restructuring of joint venture with Uber",0.60,Official Press Release 
+2022-02-15,"Yandex Announces Fourth Quarter and Full-Year 2021 Financial Results",0.80,Official Press Release 
+2022-02-28,"Nasdaq suspends trading in securities of companies with Russian operations",-0.80,Official Press Release 
+2022-03-07,"Yandex announces convertible notes holders have right to require redemption",-0.60,Official Press Release 
+2022-03-18,"Yandex explores strategic options for News and Zen",-0.30,Official Press Release 
+2022-04-27,"Yandex Announces First Quarter 2022 Financial Results",-0.20,Official Press Release 
+2022-04-28,"Yandex reaches agreement in principle to sell News and Zen to VK",-0.10,Official Press Release 
+2022-06-22,"Yandex announces 2022 AGM will be held later this year",0.00,Official Press Release 
+2022-06-23,"Arkady Volozh steps down as CEO and Executive Director",-0.50,Official Press Release 
+2022-07-26,"Yandex Announces Second Quarter 2022 Financial Results",0.30,Official Press Release 
+2022-09-12,"Yandex completes sale of News and Zen and acquisition of Delivery Club",0.45,Official Press Release 
+2022-11-03,"Yandex Announces Third Quarter 2022 Financial Results",0.40,Official Press Release 
+2022-11-25,"Yandex announces Board has commenced strategic review to restructure Group",0.20,Official Press Release 
+2023-02-15,"Yandex Announces Fourth Quarter and Full-Year 2022 Financial Results",0.60,Official Press Release 
+2023-03-15,"Yandex receives notice of delisting from Nasdaq",-0.65,Official Press Release 
+2023-04-21,"Yandex acquires Uber's remaining stake in MLU B.V. mobility joint venture",0.55,Official Press Release 
+2023-04-27,"Yandex Announces First Quarter 2023 Financial Results",0.70,Official Press Release 
+2023-06-06,"Yandex receives favorable decision from Nasdaq Listing Hearings Panel",0.50,Official Press Release 
+2023-06-30,"Yandex announces leadership changes in financial department",0.20,Official Press Release 
+2023-07-27,"Yandex Announces Second Quarter 2023 Financial Results",0.75,Official Press Release 
+2023-10-27,"Yandex Announces Third Quarter 2023 Financial Results",0.70,Official Press Release 
+2024-02-05,"Yandex enters definitive agreement to sell Russian businesses for RUB 475 billion",0.85,Official Press Release 
+2024-02-15,"Yandex Announces Fourth Quarter and Full-Year 2023 Financial Results",0.80,Official Press Release 
+2024-04-26,"Yandex Announces First Quarter 2024 Financial Results",0.75,Official Press Release 
+2024-07-30,"Yandex Announces Second Quarter 2024 Financial Results",0.80,Official Press Release 
+2024-10-29,"Yandex Announces Third Quarter 2024 Financial Results",0.75,Official Press Release 
