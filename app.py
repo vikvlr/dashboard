@@ -1,58 +1,76 @@
 import streamlit as st
-import pandas as pd
-import plotly.express as px
 
-st.set_page_config(page_title="Аналитика Яндекса", layout="wide")
-st.title("📊 Интегрированный дашборд: Яндекс")
+st.set_page_config(page_title="Дашборды Яндекса", page_icon="📊", layout="wide")
 
-def clean_number(x):
-    if isinstance(x, str):
-        # Убираем запятые
-        x = x.replace(",", "")
-        # Если есть M — умножаем на 1 000 000
-        if "M" in x:
-            x = x.replace("M", "")
-            return float(x) * 1_000_000
-        # Если есть K — умножаем на 1000
-        if "K" in x:
-            x = x.replace("K", "")
-            return float(x) * 1000
-        return float(x)
-    return float(x)
+st.sidebar.title("🗺️ Навигация")
+st.sidebar.markdown("---")
 
-@st.cache_data
-def load_stock_data():
-    df = pd.read_csv("data/yandex_stock.csv", parse_dates=["date"])
-    # Преобразуем close и volume в числа
-    df["close"] = df["close"].apply(clean_number)
-    df["volume"] = df["volume"].apply(clean_number)
-    return df
+page = st.sidebar.radio(
+    "Выберите дашборд",
+    [
+        "Главная",
+        "4.1 Финансовое здоровье",
+        "4.2 ESG-аналитика",
+        "4.3 Интегрированный анализ",
+        "4.4 Мониторинг рисков",
+        "4.5 Прогнозы vs Факт"
+    ]
+)
 
-@st.cache_data
-def load_news_data():
-    return pd.read_csv("data/news_with_sentiment.csv", parse_dates=["date"])
+st.sidebar.markdown("---")
+st.sidebar.caption("Проект: Дашборды для анализа компании Яндекс")
+st.sidebar.caption("Команда: Вика, Стефа, Алена")
 
-stock_df = load_stock_data()
-news_df = load_news_data()
+if page == "Главная":
+    st.title("📊 Дашборды для анализа компании Яндекс")
+    st.markdown("---")
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("""
+        ### Доступные дашборды
 
-st.subheader("📈 Динамика цены акций")
-fig1 = px.line(stock_df, x="date", y="close", markers=True, title="Цена закрытия акций Яндекса")
-st.plotly_chart(fig1, use_container_width=True)
+        **4.1 Финансовое здоровье** — Вика
+        - Ключевые финансовые метрики
+        - LLM-комментарии
+        - Drill-down по кварталам
 
-st.subheader("📰 Тональность новостей")
-fig2 = px.bar(news_df, x="date", y="sentiment_score",
-              color="sentiment_score",
-              color_continuous_scale=["red", "yellow", "green"],
-              title="Тональность новостей (от -1 до +1)",
-              text="title")
-st.plotly_chart(fig2, use_container_width=True)
+        **4.2 ESG-аналитика** — Стефа
+        - ESG-метрики в динамике
+        - Матрица существенности
+        - Сравнение с бенчмарками
 
-st.subheader("📊 Ключевые показатели")
+        **4.3 Интегрированный анализ** — Алена
+        - Финансы + ESG + новости + акции
+        - Корреляционный анализ
+        - Таймлайн событий
+        """)
+    with col2:
+        st.markdown("""
+        ### Доступные дашборды
 
-col1, col2, col3 = st.columns(3)
-with col1:
-    st.metric("Максимальная цена акции", f"{stock_df['close'].max():.2f} ₽")
-with col2:
-    st.metric("Средняя тональность новостей", f"{news_df['sentiment_score'].mean():.2f}")
-with col3:
-    st.metric("Количество новостей", len(news_df))
+        **4.4 Мониторинг рисков** — Вика
+        - Матрица рисков
+        - Тепловая карта
+
+        **4.5 Прогнозы vs Факт** — Стефа
+        - Сравнение прогнозов
+        - Earnings surprise
+        - LLM-анализ расхождений
+        """)
+    st.markdown("---")
+    st.caption("Выберите дашборд в боковой панели для начала работы")
+
+elif page == "4.1 Финансовое здоровье":
+    import dashboards.dashboard_1 as d1
+
+elif page == "4.2 ESG-аналитика":
+    import dashboards.dashboard_2 as d2
+
+elif page == "4.3 Интегрированный анализ":
+    import dashboards.dashboard_3 as d3
+
+elif page == "4.4 Мониторинг рисков":
+    import dashboards.dashboard_4 as d4
+
+elif page == "4.5 Прогнозы vs Факт":
+    import dashboards.dashboard_5 as d5
