@@ -18,7 +18,7 @@ st.set_page_config(
 # Загрузка данных
 @st.cache_data
 def load_risk_data():
-    df = pd.read_csv('data/risk_factors.csv')
+    df = pd.read_csv('data/risk_factors.csv', parse_dates=['date'])
     return df
 
 
@@ -27,6 +27,15 @@ df = load_risk_data()
 # Настройка фильтров
 st.sidebar.title("Мониторинг рисков")
 st.sidebar.markdown("---")
+
+# Фильтр по дате
+dates = sorted(df['date'].unique())
+selected_date = st.sidebar.selectbox(
+    "Выберите квартал",
+    options=dates,
+    format_func=lambda x: x.strftime('%Y-%m-%d'),
+    index=len(dates) - 1
+)
 
 # Фильтр по категории риска
 all_categories = df['risk_category'].unique().tolist()
@@ -38,13 +47,23 @@ st.sidebar.subheader("Фильтр по уровню риска")
 min_prob = st.sidebar.slider("Минимальная вероятность", 0.0, 1.0, 0.0, 0.05)
 min_impact = st.sidebar.slider("Минимальное влияние", 0.0, 1.0, 0.0, 0.05)
 
-df_filtered = df.copy()
+df_selected_initial = df[df['date'] == selected_date].copy()
+
+df_selected = df_selected_initial.copy()
 if selected_categories:
-    df_filtered = df_filtered[df_filtered['risk_category'].isin(selected_categories)]
-df_filtered = df_filtered[(df_filtered['probability'] >= min_prob) & (df_filtered['impact'] >= min_impact)]
+    df_selected = df_selected[df_selected['risk_category'].isin(selected_categories)]
+df_selected = df_selected[(df_selected['probability'] >= min_prob) & (df_selected['impact'] >= min_impact)]
 
 st.sidebar.markdown("---")
-st.sidebar.caption(f"Рисков показано: {len(df_filtered)}")
+st.sidebar.caption(f"Рисков показано: {len(df_selected)}")
+st.sidebar.caption(f"Дата: {selected_date.strftime('%Y-%m-%d')}")
+
+# Данные для предыдущего периода
+prev_date_idx = dates.index(selected_date) - 1 if dates.index(selected_date) > 0 else None
+df_prev = None
+if prev_date_idx is not None:
+    prev_date = dates[prev_date_idx]
+    df_prev = df[df['date'] == prev_date].copy()
 
 
 st.title("Мониторинг рисков портфеля")
@@ -54,8 +73,8 @@ st.markdown("---")
 col1, col2, col3, col4, col5 = st.columns(5)
 
 with col1:
-    total_risks = len(df)
-    filtered_risks = len(df_filtered)
+    total_risks = len(df_selected_initial)
+    filtered_risks = len(df_selected)
     st.metric("Количество рисков", filtered_risks)
     
     if filtered_risks == total_risks:
@@ -69,7 +88,7 @@ with col1:
     )
 
 with col2:
-    critical_risks = df_filtered[(df_filtered['probability'] >= 0.6) & (df_filtered['impact'] >= 0.7)]
+    critical_risks = df_selected[(df_selected['probability'] >= 0.6) & (df_selected['impact'] >= 0.7)]
     st.metric("Критические", len(critical_risks))
     
     if len(critical_risks) > 0:
@@ -84,7 +103,7 @@ with col2:
         )
 
 with col3:
-    high_risk = df_filtered[(df_filtered['probability'] >= 0.5) & (df_filtered['impact'] >= 0.6)]
+    high_risk = df_selected[(df_selected['probability'] >= 0.5) & (df_selected['impact'] >= 0.6)]
     st.metric("Высокорисковые", len(high_risk))
     st.markdown(
         '<div style="background-color:#D4E6FF; padding:4px 12px; border-radius:12px; font-size:12px; color:#1E3A8A; display:inline-block;">Требуют внимания</div>',
@@ -92,9 +111,9 @@ with col3:
     )
 
 with col4:
-    if len(df_filtered) > 0:
-        max_prob = df_filtered['probability'].max()
-        max_prob_name = df_filtered[df_filtered['probability'] == max_prob]['risk_name'].values[0]
+    if len(df_selected) > 0:
+        max_prob = df_selected['probability'].max()
+        max_prob_name = df_selected[df_selected['probability'] == max_prob]['risk_name'].values[0]
         st.metric("Максимальная вероятность", f"{max_prob:.0%}")
         st.markdown(
             f'<div style="background-color:#FEE2E2; padding:4px 12px; border-radius:12px; font-size:12px; color:#991B1B; display:inline-block;">{max_prob_name}</div>',
@@ -104,9 +123,9 @@ with col4:
         st.metric("Максимальная вероятность", "—")
 
 with col5:
-    if len(df_filtered) > 0:
-        max_impact = df_filtered['impact'].max()
-        max_impact_name = df_filtered[df_filtered['impact'] == max_impact]['risk_name'].values[0]
+    if len(df_selected) > 0:
+        max_impact = df_selected['impact'].max()
+        max_impact_name = df_selected[df_selected['impact'] == max_impact]['risk_name'].values[0]
         st.metric("Максимальное влияние", f"{max_impact:.0%}")
         st.markdown(
             f'<div style="background-color:#FEE2E2; padding:4px 12px; border-radius:12px; font-size:12px; color:#991B1B; display:inline-block;">{max_impact_name}</div>',
@@ -158,8 +177,8 @@ with col_heatmap:
         'reputational': '#52E3E9'
     }
 
-    for category in df_filtered['risk_category'].unique():
-        subset = df_filtered[df_filtered['risk_category'] == category]
+    for category in df_selected['risk_category'].unique():
+        subset = df_selected[df_selected['risk_category'] == category]
         color = color_map.get(category, '#888')
         fig.add_trace(go.Scatter(
             x=subset['impact'],
@@ -235,7 +254,7 @@ st.markdown("---")
 st.subheader("📌 Алерты по рискам")
 
 # Критические риски
-critical_risks = df_filtered[(df_filtered['probability'] >= 0.6) & (df_filtered['impact'] >= 0.7)]
+critical_risks = df_selected[(df_selected['probability'] >= 0.6) & (df_selected['impact'] >= 0.7)]
 
 if len(critical_risks) > 0:
     st.error(f"⚠️ **Обнаружено {len(critical_risks)} критических рисков!**")
@@ -245,9 +264,9 @@ else:
     st.success("✅ Критических рисков не обнаружено. Все риски под контролем.")
 
 # Риски, требующие внимания
-warning_risks = df_filtered[
-    ((df_filtered['probability'] >= 0.5) & (df_filtered['impact'] >= 0.6)) &
-    ~((df_filtered['probability'] >= 0.6) & (df_filtered['impact'] >= 0.7))
+warning_risks = df_selected[
+    ((df_selected['probability'] >= 0.5) & (df_selected['impact'] >= 0.6)) &
+    ~((df_selected['probability'] >= 0.6) & (df_selected['impact'] >= 0.7))
 ]
 
 if len(warning_risks) > 0:
@@ -255,12 +274,96 @@ if len(warning_risks) > 0:
     for _, row in warning_risks.iterrows():
         st.caption(f"🟡 **{row['risk_name']}** — Вероятность: {row['probability']:.0%}, Влияние: {row['impact']:.0%}")
 
+# Алерты при изменении
+if df_prev is not None:
+    st.markdown("---")
+    st.subheader("📈 Изменения рисковых профилей")
+
+    merged = df_selected.merge(
+        df_prev,
+        on=['risk_category', 'risk_name'],
+        suffixes=('_curr', '_prev')
+    )
+
+    changed = merged[
+        (abs(merged['probability_curr'] - merged['probability_prev']) > 0.1) |
+        (abs(merged['impact_curr'] - merged['impact_prev']) > 0.1)
+    ]
+
+    if len(changed) > 0:
+        for _, row in changed.iterrows():
+            prob_change = row['probability_curr'] - row['probability_prev']
+            impact_change = row['impact_curr'] - row['impact_prev']
+            
+            total_change = abs(prob_change) + abs(impact_change)
+            
+            if prob_change > 0:
+                prob_color = "#dc3545"
+                prob_display = f"+{prob_change:.0%}"
+            elif prob_change < 0:
+                prob_color = "#28a745"
+                prob_display = f"{prob_change:.0%}"
+            else:
+                prob_color = "#6c757d"
+                prob_display = "0%"
+            
+            if impact_change > 0:
+                impact_color = "#dc3545"
+                impact_display = f"+{impact_change:.0%}"
+            elif impact_change < 0:
+                impact_color = "#28a745"
+                impact_display = f"{impact_change:.0%}"
+            else:
+                impact_color = "#6c757d"
+                impact_display = "0%"
+            
+            if total_change >= 0.25:
+                bg_color = "#FEE2E2"
+                text_color = "#991B1B"
+                note_text = 'Обратите внимание'
+                note_color = "#991B1B"
+            else:
+                bg_color = "#f8f9fa"
+                text_color = "#495057"
+                note_text = ""
+                note_color = "transparent"
+            
+            note_html = f'<span style="color:{note_color}; margin-left:auto;">{note_text}</span>' if note_text else ''
+            
+            st.markdown(
+                f"""
+                <div style="
+                    background-color: {bg_color};
+                    padding: 6px 14px;
+                    border-radius: 8px;
+                    margin-bottom: 4px;
+                    font-size: 15px;
+                    display: flex;
+                    align-items: center;
+                    flex-wrap: wrap;
+                    gap: 8px 20px;
+                ">
+                    <span style="min-width: 220px; font-weight:bold; color:{text_color};">
+                        {row['risk_name']}
+                    </span>
+                    <span style="color:{text_color}; display: flex; gap: 20px; flex-wrap: wrap;">
+                        <span>Вероятность: <b style="color:{prob_color};">{prob_display}</b></span>
+                        <span>Влияние: <b style="color:{impact_color};">{impact_display}</b></span>
+                    </span>
+                    {note_html}
+                </div>
+                """,
+                unsafe_allow_html=True
+            )
+    else:
+        st.success("За период существенных изменений рисков не выявлено.")
+
 st.markdown("---")
 
 # 4 - Таблица рисков
 st.subheader("📋 Полный список рисков")
 
-df_sorted = df_filtered.sort_values(['probability', 'impact'], ascending=[False, False])
+df_sorted = df_selected.sort_values(['probability', 'impact'], ascending=[False, False])
 
 display_df = df_sorted.copy()
 display_df['probability'] = display_df['probability'].apply(lambda x: f"{x:.0%}")
@@ -320,6 +423,7 @@ if st.button("Скачать отчёт в PDF"):
     # Заголовок, дата, фильтры
     story.append(Paragraph("Отчёт по рискам портфеля", style_title))
     story.append(Spacer(1, 6))
+    story.append(Paragraph(f"Период: {selected_date.strftime('%Y-%m')} (Q{selected_date.quarter} {selected_date.year})", style_date))
     story.append(Paragraph(f"Дата генерации: {pd.Timestamp.now().strftime('%Y-%m-%d %H:%M')}", style_date))
     story.append(Spacer(1, 6))
     story.append(Paragraph(f"Категории: {', '.join(selected_categories) if selected_categories else 'Все'}", style_filter))
@@ -329,7 +433,7 @@ if st.button("Скачать отчёт в PDF"):
 
     # Таблица рисков
     table_data = [["Риск", "Категория риска", "Вероятность", "Влияние"]]
-    for _, row in df_filtered.iterrows():
+    for _, row in df_selected.iterrows():
         table_data.append([
             row['risk_name'],
             row['risk_category'],
@@ -348,13 +452,13 @@ if st.button("Скачать отчёт в PDF"):
         ('GRID', (0, 0), (-1, -1), 0.5, colors.black),
     ]))
 
-    story.append(Paragraph(f"Список рисков ({len(df_filtered)})", style_header))
+    story.append(Paragraph(f"Список рисков ({len(df_selected)})", style_header))
     story.append(Spacer(1, 6))
     story.append(table)
     story.append(Spacer(1, 12))
 
     # Список критических рисков
-    critical = df_filtered[(df_filtered['probability'] >= 0.6) & (df_filtered['impact'] >= 0.7)]
+    critical = df_selected[(df_selected['probability'] >= 0.6) & (df_selected['impact'] >= 0.7)]
     story.append(Paragraph("Критические риски:", style_critical_header))
     if len(critical) > 0:
         for _, row in critical.iterrows():
@@ -366,7 +470,7 @@ if st.button("Скачать отчёт в PDF"):
     story.append(Spacer(1, 12))
 
     # Риски, требующие внимания
-    warning_risks = df_filtered[(df_filtered['probability'] >= 0.5) & (df_filtered['impact'] >= 0.6) & ~((df_filtered['probability'] >= 0.6) & (df_filtered['impact'] >= 0.7))]
+    warning_risks = df_selected[(df_selected['probability'] >= 0.5) & (df_selected['impact'] >= 0.6) & ~((df_selected['probability'] >= 0.6) & (df_selected['impact'] >= 0.7))]
     story.append(Paragraph("Риски, требующие внимания:", style_critical_header))
     if len(warning_risks) > 0:
         for _, row in warning_risks.iterrows():
@@ -380,7 +484,7 @@ if st.button("Скачать отчёт в PDF"):
     pdf_bytes = buffer.getvalue()
     b64 = base64.b64encode(pdf_bytes).decode()
 
-    href = f'<a href="data:application/octet-stream;base64,{b64}" download="risk_report_{pd.Timestamp.now().strftime("%Y%m%d")}.pdf"> Скачать PDF</a>'
+    href = f'<a href="data:application/octet-stream;base64,{b64}" download="risk_report_{selected_date.strftime("%Y%m%d")}.pdf"> Скачать PDF</a>'
     st.markdown(href, unsafe_allow_html=True)
 
 
