@@ -1,17 +1,7 @@
-import os
-from dotenv import load_dotenv
+import requests
 
-load_dotenv()
-
-OPENAI_AVAILABLE = False
-try:
-    from openai import OpenAI
-
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-    OPENAI_AVAILABLE = True
-except Exception:
-    OPENAI_AVAILABLE = False
-    print("OpenAI API ключ не найден. Используется режим заглушки.")
+OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_MODEL = "qwen2.5:3b"
 
 
 def generate_commentary(metric_name, values):
@@ -35,15 +25,12 @@ def generate_commentary(metric_name, values):
 
     name = metric_names.get(metric_name, metric_name)
 
-    # Если нет данных
     if not values or len(values) == 0:
         return "⚠️ Недостаточно данных для анализа."
 
-    # Если только одно значение
     if len(values) == 1:
         return f"📊 **{name}**: {values[0]:.2f}. Данных за один период недостаточно для выявления тренда."
 
-    # Расчёт тренда
     first_val = values[0]
     last_val = values[-1]
     change = ((last_val - first_val) / abs(first_val)) * 100 if first_val != 0 else 0
@@ -74,25 +61,89 @@ def generate_commentary(metric_name, values):
     elif metric_name in ['roe', 'roa', 'ros'] and last_val > 0.15:
         comment += " ✅ Высокая рентабельность."
 
-    # Если OpenAI доступен, то улучшаем комментарий
-    if OPENAI_AVAILABLE:
-        try:
-            prompt = f"""
-            Ты финансовый аналитик. Прокомментируй динамику показателя {name}.
-            Значения за период: {values}
-            Тренд: {trend}
-            Изменение: {change:.1f}%
-            Напиши краткий, профессиональный комментарий на русском языке (1-2 предложения).
-            """
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=100,
-                temperature=0.7
-            )
-            llm_comment = response.choices[0].message.content.strip()
-            return llm_comment
-        except Exception as e:
-            return comment + f"\n\n*(Режим заглушки — API недоступен: {e})*"
+    try:
+        prompt = f"""
+        Ты профессиональный финансовый аналитик. Твой ответ должен быть строго на русском языке.
+
+        Прокомментируй динамику показателя "{name}" за анализируемый период.
+
+        Данные:
+        - Значения за период: {values}
+        - Первое значение: {values[0]:.2f}
+        - Последнее значение: {values[-1]:.2f}
+        - Тренд: {trend}
+        - Изменение: {change:+.1f}%
+
+        Напиши краткий, профессиональный комментарий на русском языке (3 предложения).
+        В ответе обязательно:
+        1. Укажи конкретные числовые значения (первое и последнее значение, изменение в процентах).
+        2. Сделай вывод о динамике показателя.
+        3. Укажи, о чём свидетельствует данный показатель для компании.
+        4. Используй только русский язык, без англицизмов и смешения языков.
+
+        Пример правильного ответа для показателя "EBITDA":
+        "За анализируемый период показатель EBITDA вырос с 10 426 млн руб до 48 700 млн руб, что составляет рост на 367%. Это свидетельствует о значительном улучшении операционной эффективности компании. Рост EBITDA говорит о том, что компания увеличивает прибыльность своей основной деятельности и генерирует больше денежных средств для инвестиций и обслуживания долга."
+
+        Напиши комментарий для показателя "{name}" в том же формате.
+        """
+        
+        response = requests.post(
+            OLLAMA_URL,
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.7,
+                    "num_predict": 150
+                }
+            },
+            timeout=60
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            llm_comment = data.get('response', '').strip()
+            if llm_comment:
+                return llm_comment
+            else:
+                return comment + "\n\n*(Модель вернула пустой ответ)*"
+        else:
+            return comment + f"\n\n*(Ошибка Ollama: {response.status_code})*"
+
+    except requests.exceptions.ConnectionError:
+        return comment + "\n\n**Ollama не запущена!** Запусти приложение Ollama."
+    except Exception as e:
+        return comment + f"\n\n*(Ошибка: {e})*"
+
+
+def generate_surprise_analysis(actual, predicted, news_texts):
+    """
+    Генерирует анализ причин расхождения прогнозов и факта.
+    """
+    surprise = ((actual - predicted) / abs(predicted)) * 100 if predicted != 0 else 0
+
+    if surprise > 5:
+        direction = "превысил"
+        mood = "позитивный"
+    elif surprise < -5:
+        direction = "не достиг"
+        mood = "негативный"
+    else:
+        direction = "соответствовал"
+        mood = "нейтральный"
+
+    comment = f"**Результат {direction} прогнозы на {abs(surprise):.1f}%.** "
+
+    if mood == "позитивный":
+        comment += "Возможные причины: сильные операционные показатели, успешные запуски продуктов, благоприятная рыночная конъюнктура."
+    elif mood == "негативный":
+        comment += "Возможные причины: макроэкономические факторы, регуляторные риски, усиление конкуренции."
+    else:
+        comment += "Расхождение в пределах нормы."
+
+    # Добавляем информацию из новостей
+    if news_texts and len(news_texts) > 0 and news_texts[0] != "Нет доступных новостей за этот период.":
+        comment += f"\n\n**Новости за период:** {news_texts[0][:100]}..."
 
     return comment
