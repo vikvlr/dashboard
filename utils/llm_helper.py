@@ -25,15 +25,12 @@ def generate_commentary(metric_name, values):
 
     name = metric_names.get(metric_name, metric_name)
 
-    # Если нет данных
     if not values or len(values) == 0:
         return "⚠️ Недостаточно данных для анализа."
 
-    # Если только одно значение
     if len(values) == 1:
         return f"📊 **{name}**: {values[0]:.2f}. Данных за один период недостаточно для выявления тренда."
 
-    # Расчёт тренда
     first_val = values[0]
     last_val = values[-1]
     change = ((last_val - first_val) / abs(first_val)) * 100 if first_val != 0 else 0
@@ -64,7 +61,6 @@ def generate_commentary(metric_name, values):
     elif metric_name in ['roe', 'roa', 'ros'] and last_val > 0.15:
         comment += " ✅ Высокая рентабельность."
 
-    # Запрос к Ollama
     try:
         prompt = f"""
         Ты профессиональный финансовый аналитик. Твой ответ должен быть строго на русском языке.
@@ -119,3 +115,35 @@ def generate_commentary(metric_name, values):
         return comment + "\n\n**Ollama не запущена!** Запусти приложение Ollama."
     except Exception as e:
         return comment + f"\n\n*(Ошибка: {e})*"
+
+
+def generate_surprise_analysis(actual, predicted, news_texts):
+    """
+    Генерирует анализ причин расхождения прогнозов и факта.
+    """
+    surprise = ((actual - predicted) / abs(predicted)) * 100 if predicted != 0 else 0
+
+    if surprise > 5:
+        direction = "превысил"
+        mood = "позитивный"
+    elif surprise < -5:
+        direction = "не достиг"
+        mood = "негативный"
+    else:
+        direction = "соответствовал"
+        mood = "нейтральный"
+
+    comment = f"**Результат {direction} прогнозы на {abs(surprise):.1f}%.** "
+
+    if mood == "позитивный":
+        comment += "Возможные причины: сильные операционные показатели, успешные запуски продуктов, благоприятная рыночная конъюнктура."
+    elif mood == "негативный":
+        comment += "Возможные причины: макроэкономические факторы, регуляторные риски, усиление конкуренции."
+    else:
+        comment += "Расхождение в пределах нормы."
+
+    # Добавляем информацию из новостей
+    if news_texts and len(news_texts) > 0 and news_texts[0] != "Нет доступных новостей за этот период.":
+        comment += f"\n\n**Новости за период:** {news_texts[0][:100]}..."
+
+    return comment
