@@ -1,17 +1,7 @@
-import os
-from dotenv import load_dotenv
+import requests
 
-load_dotenv()
-
-OPENAI_AVAILABLE = False
-try:
-    from openai import OpenAI
-
-    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY"))
-    OPENAI_AVAILABLE = True
-except Exception:
-    OPENAI_AVAILABLE = False
-    print("OpenAI API ключ не найден. Используется режим заглушки.")
+OLLAMA_URL = "http://localhost:11434/api/generate"
+OLLAMA_MODEL = "qwen2.5:3b"
 
 
 def generate_commentary(metric_name, values):
@@ -74,25 +64,58 @@ def generate_commentary(metric_name, values):
     elif metric_name in ['roe', 'roa', 'ros'] and last_val > 0.15:
         comment += " ✅ Высокая рентабельность."
 
-    # Если OpenAI доступен, то улучшаем комментарий
-    if OPENAI_AVAILABLE:
-        try:
-            prompt = f"""
-            Ты финансовый аналитик. Прокомментируй динамику показателя {name}.
-            Значения за период: {values}
-            Тренд: {trend}
-            Изменение: {change:.1f}%
-            Напиши краткий, профессиональный комментарий на русском языке (1-2 предложения).
-            """
-            response = client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
-                max_tokens=100,
-                temperature=0.7
-            )
-            llm_comment = response.choices[0].message.content.strip()
-            return llm_comment
-        except Exception as e:
-            return comment + f"\n\n*(Режим заглушки — API недоступен: {e})*"
+    # Запрос к Ollama
+    try:
+        prompt = f"""
+        Ты профессиональный финансовый аналитик. Твой ответ должен быть строго на русском языке.
 
-    return comment
+        Прокомментируй динамику показателя "{name}" за анализируемый период.
+
+        Данные:
+        - Значения за период: {values}
+        - Первое значение: {values[0]:.2f}
+        - Последнее значение: {values[-1]:.2f}
+        - Тренд: {trend}
+        - Изменение: {change:+.1f}%
+
+        Напиши краткий, профессиональный комментарий на русском языке (3 предложения).
+        В ответе обязательно:
+        1. Укажи конкретные числовые значения (первое и последнее значение, изменение в процентах).
+        2. Сделай вывод о динамике показателя.
+        3. Укажи, о чём свидетельствует данный показатель для компании.
+        4. Используй только русский язык, без англицизмов и смешения языков.
+
+        Пример правильного ответа для показателя "EBITDA":
+        "За анализируемый период показатель EBITDA вырос с 10 426 млн руб до 48 700 млн руб, что составляет рост на 367%. Это свидетельствует о значительном улучшении операционной эффективности компании. Рост EBITDA говорит о том, что компания увеличивает прибыльность своей основной деятельности и генерирует больше денежных средств для инвестиций и обслуживания долга."
+
+        Напиши комментарий для показателя "{name}" в том же формате.
+        """
+        
+        response = requests.post(
+            OLLAMA_URL,
+            json={
+                "model": OLLAMA_MODEL,
+                "prompt": prompt,
+                "stream": False,
+                "options": {
+                    "temperature": 0.7,
+                    "num_predict": 150
+                }
+            },
+            timeout=60
+        )
+
+        if response.status_code == 200:
+            data = response.json()
+            llm_comment = data.get('response', '').strip()
+            if llm_comment:
+                return llm_comment
+            else:
+                return comment + "\n\n*(Модель вернула пустой ответ)*"
+        else:
+            return comment + f"\n\n*(Ошибка Ollama: {response.status_code})*"
+
+    except requests.exceptions.ConnectionError:
+        return comment + "\n\n**Ollama не запущена!** Запусти приложение Ollama."
+    except Exception as e:
+        return comment + f"\n\n*(Ошибка: {e})*"
